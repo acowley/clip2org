@@ -83,9 +83,7 @@ clip2org-include-pdf-folder."
 (defun clip2org-get-next-book-as-list ()
   (let (title is-highlight header loc date page start end content)
     (setq start (point))
-    (if (not (re-search-forward "==========" nil t 1))
-        ;; Return nil
-        nil
+    (when (re-search-forward "==========" nil t 1)
       (setq end (point))
       (goto-char start)
       (setq title (buffer-substring-no-properties
