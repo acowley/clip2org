@@ -109,13 +109,21 @@ clip2org-include-pdf-folder."
         (error "Clip2org: failed in getting content or quoted text."))
       (message (format "Clip2org: now processing \"%s\"" title))
       (forward-line)
-      ;; Return list
-      (list title is-highlight page loc date content header))))
+
+      ;; Return assoc list
+      `((title . ,title)
+        (is-highlight . ,is-highlight)
+        (page . ,page)
+        (loc . ,loc)
+        (date . ,date)
+        (content . ,content)
+        (header . ,header)))))
 
 (defun clip2org-convert-to-org (clist)
   "Process clip2org-alist and generate the output buffer."
   (with-current-buffer (get-buffer-create "*clippings*")
     (delete-region (point-min) (point-max))
+    (org-mode)
     ;; Process headers of each book
     (while (caar clist)
       (insert "\n* " (caar clist))
@@ -123,35 +131,37 @@ clip2org-include-pdf-folder."
         ;; Process each clipping
         (while (car note-list)
           (let* ((item (car note-list))
-                 (is-highlight (nth 0 item))
-                 (page (nth 1 item))
-                 (loc (nth 2 item))
-                 (date (nth 3 item))
-                 (content (nth 4 item)))
-            (if (not is-highlight)
-                (insert "\n** " content "\n")
-              (insert "\n** ")
-              (when page
-                (insert "Page " page " "))
-              (when loc
-                (insert "Location " loc " "))
-              (insert "\n"))
-            (when clip2org-include-date
-              (insert ":PROPERTIES:\n")
-              (insert ":DATE: " date "\n")
-              (insert ":END:\n\n"))
-            (when is-highlight
-                (insert content "\n"))
+                 (is-highlight (cdr (assoc 'is-highlight item)))
+                 (page (cdr (assoc 'page item)))
+                 (loc (cdr (assoc 'loc item)))
+                 (date (cdr (assoc 'date item)))
+                 (content (cdr (assoc 'content item))))
+
+            (unless (and clip2org-skip-bookmarks
+                         (clip2org--is-bookmark item))
+
+              (if (not is-highlight)
+                  (insert "\n** " content "\n")
+                (insert "\n** ")
+                (when page
+                  (insert "Page " page " "))
+                (when loc
+                  (insert "Location " loc " "))
+                (insert "\n   " content "\n"))
+
+              (when clip2org-include-date
+                (org-set-property "DATE" date))
+
               ;; Insert pdf link
               (if (and clip2org-include-pdf-links page)
                   (insert (concat "[[docview:" clip2org-include-pdf-folder
                                   (caar clist) ".pdf"
-                                  "::" page "][View Page]]\n"))))
+                                  "::" page "][View Page]]\n")))))
           (setq note-list (cdr note-list))))
       ;; Increment to the next book
       (setq clist (cdr clist))))
-  (switch-to-buffer "*clippings*")
-  (org-mode))
+
+  (switch-to-buffer "*clippings*"))
 
 (defun clip2org-append-to-alist-key (key value alist)
   "Append a value to the key part of an alist. This function is
@@ -178,7 +188,8 @@ to the list"
 
 (defun clip2org--is-bookmark (booklist)
   "Returns t if is-highlight is false"
-  (not (cadr booklist)))
+  ;FIXME: not is-highlight may mean a note as well? not just a bookmark?
+  (not (cdr (assoc 'is-highlight booklist))))
 
 (defun clip2org ()
   (interactive)
@@ -187,10 +198,10 @@ to the list"
     (goto-char (point-min))
     (let (clist (booklist (clip2org-get-next-book-as-list)))
       (while booklist
-        (unless (and clip2org-skip-bookmarks
-                     (clip2org--is-bookmark booklist))
-          (setq clist (clip2org-append-to-alist-key
-                       (car booklist) (cdr booklist) clist)))
+        (setq clist (clip2org-append-to-alist-key
+                       (cdr (assoc 'title booklist))
+                       booklist
+                       clist))
 	(setq booklist (clip2org-get-next-book-as-list)))
       (clip2org-convert-to-org clist))))
 
