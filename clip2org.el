@@ -124,18 +124,19 @@ clip2org-include-pdf-folder."
   (with-current-buffer (get-buffer-create "*clippings*")
     (delete-region (point-min) (point-max))
     (org-mode)
-    ;; Process headers of each book
-    (while (caar clist)
-      (insert "\n* " (caar clist))
-      (let ((note-list (cdar clist)))
+
+    ;; Process each book
+    (dolist (book clist)
+      (insert "\n* " (car book))
+      (let ((note-list (cdr book)))
+
         ;; Process each clipping
-        (while (car note-list)
-          (let* ((item (car note-list))
-                 (is-highlight (cdr (assoc 'is-highlight item)))
-                 (page (cdr (assoc 'page item)))
-                 (loc (cdr (assoc 'loc item)))
-                 (date (cdr (assoc 'date item)))
-                 (content (cdr (assoc 'content item))))
+        (dolist (item note-list)
+          (let ((is-highlight (cdr (assoc 'is-highlight item)))
+                (page (cdr (assoc 'page item)))
+                (loc (cdr (assoc 'loc item)))
+                (date (cdr (assoc 'date item)))
+                (content (cdr (assoc 'content item))))
 
             (unless (and clip2org-skip-bookmarks
                          (clip2org--is-bookmark item))
@@ -156,10 +157,7 @@ clip2org-include-pdf-folder."
               (if (and clip2org-include-pdf-links page)
                   (insert (concat "[[docview:" clip2org-include-pdf-folder
                                   (caar clist) ".pdf"
-                                  "::" page "][View Page]]\n")))))
-          (setq note-list (cdr note-list))))
-      ;; Increment to the next book
-      (setq clist (cdr clist))))
+                                  "::" page "][View Page]]\n")))))))))
 
   (switch-to-buffer "*clippings*"))
 
