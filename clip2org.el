@@ -80,6 +80,11 @@ clip2org-include-pdf-folder."
   :type 'boolean
   :group 'clip2org)
 
+(defcustom clip2org-clipping-tags nil
+  "When non-nil the string is used as a tag for clippings."
+  :type 'string
+  :group 'clip2org)
+
 (defun clip2org-get-next-book-as-list ()
   (let (title is-highlight header loc date page start end content)
     (setq start (point))
@@ -152,6 +157,9 @@ clip2org-include-pdf-folder."
 
               (when clip2org-include-date
                 (org-set-property "DATE" date))
+
+              (when clip2org-clipping-tags
+                (org-set-tags-to clip2org-clipping-tags))
 
               ;; Insert pdf link
               (if (and clip2org-include-pdf-links page)
