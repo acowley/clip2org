@@ -75,6 +75,11 @@ clip2org-include-pdf-folder."
   :type 'boolean
   :group 'clip2org)
 
+(defcustom clip2org-skip-bookmarks t
+  "If t, Bookmarks are ignored from the clippings file."
+  :type 'boolean
+  :group 'clip2org)
+
 (defun clip2org-get-next-book-as-list ()
   (let (title is-highlight header loc date page start end content)
     (setq start (point))
@@ -173,6 +178,10 @@ to the list"
         (setq results (append (list (list key value)) results)))
     results))
 
+(defun clip2org--is-bookmark (booklist)
+  "Returns t if is-highlight is false"
+  (not (cadr booklist)))
+
 (defun clip2org ()
   (interactive)
   (save-excursion
@@ -180,8 +189,10 @@ to the list"
     (goto-char (point-min))
     (let (clist (booklist (clip2org-get-next-book-as-list)))
       (while booklist
-	(setq clist (clip2org-append-to-alist-key
-		     (car booklist) (cdr booklist) clist))
+        (unless (and clip2org-skip-bookmarks
+                     (clip2org--is-bookmark booklist))
+          (setq clist (clip2org-append-to-alist-key
+                       (car booklist) (cdr booklist) clist)))
 	(setq booklist (clip2org-get-next-book-as-list)))
       (clip2org-convert-to-org clist))))
 
