@@ -85,6 +85,12 @@ clip2org-include-pdf-folder."
   :type 'string
   :group 'clip2org)
 
+(defcustom clip2org-persistence-file
+  (expand-file-name "clip2org-persist.txt" user-emacs-directory)
+  "Path of the file where data of clip2org runs is persisted."
+  :type 'file
+  :group 'clip2org)
+
 (defun clip2org-get-next-book-as-list ()
   (let (title is-highlight header loc date page start end content)
     (setq start (point))
@@ -100,6 +106,7 @@ clip2org-include-pdf-folder."
       (when (re-search-forward "- \\(.*\\)|" end t 1)
         (setq header (match-string 1)))
       (beginning-of-line)
+      ;;FIXME: pages can be roman numerals also.
       (when (re-search-forward "Page \\([0-9-]+\\)" end t 1)
         (setq page (match-string 1)))
       (when (re-search-forward "Loc.*? \\([0-9-]+\\)" end t 1)
@@ -124,49 +131,54 @@ clip2org-include-pdf-folder."
         (content . ,content)
         (header . ,header)))))
 
-(defun clip2org-convert-to-org (clist)
+(defun clip2org-convert-to-org (clist all)
   "Process clip2org-alist and generate the output buffer."
   (with-current-buffer (get-buffer-create "*clippings*")
     (delete-region (point-min) (point-max))
     (org-mode)
 
-    ;; Process each book
-    (dolist (book clist)
-      (insert "\n* " (car book))
-      (let ((note-list (cdr book)))
+    (let ((last-run (and (not all)
+                          (clip2org--get-last-run-timestamp))))
 
-        ;; Process each clipping
-        (dolist (item note-list)
-          (let ((is-highlight (cdr (assoc 'is-highlight item)))
-                (page (cdr (assoc 'page item)))
-                (loc (cdr (assoc 'loc item)))
-                (date (cdr (assoc 'date item)))
-                (content (cdr (assoc 'content item))))
+      (when last-run
+        (setq last-run (apply 'encode-time (org-parse-time-string last-run))))
 
-            (unless (and clip2org-skip-bookmarks
-                         (clip2org--is-bookmark item))
+      ;; Process each book
+      (dolist (book clist)
+        (insert "\n* " (car book))
+        (let ((note-list (cdr book)))
 
-              (if (not is-highlight)
-                  (insert "\n** " content "\n")
-                (insert "\n** ")
-                (when page
-                  (insert "Page " page " "))
-                (when loc
-                  (insert "Location " loc " "))
-                (insert "\n   " content "\n"))
+          ;; Process each clipping
+          (dolist (item note-list)
+            (let ((is-highlight (cdr (assoc 'is-highlight item)))
+                  (page (cdr (assoc 'page item)))
+                  (loc (cdr (assoc 'loc item)))
+                  (date (cdr (assoc 'date item)))
+                  (content (cdr (assoc 'content item))))
 
-              (when clip2org-include-date
-                (org-set-property "DATE"
-                                  (concat "[" (org-read-date t nil date) "]")))
+              (unless (clip2org--skip-clip item last-run)
 
-              (when clip2org-clipping-tags
-                (org-set-tags-to clip2org-clipping-tags))
+                (if (not is-highlight)
+                    (insert "\n** " content "\n")
+                  (insert "\n** ")
+                  (when page
+                    (insert "Page " page " "))
+                  (when loc
+                    (insert "Location " loc " "))
+                  (insert "\n   " content "\n"))
 
-              ;; Insert pdf link
-              (if (and clip2org-include-pdf-links page)
-                  (insert (concat "[[docview:" clip2org-include-pdf-folder
-                                  (caar clist) ".pdf"
-                                  "::" page "][View Page]]\n")))))))))
+                (when clip2org-include-date
+                  (org-set-property "DATE"
+                                    (concat "[" (org-read-date t nil date) "]")))
+
+                (when clip2org-clipping-tags
+                  (org-set-tags-to clip2org-clipping-tags))
+
+                ;; Insert pdf link
+                (if (and clip2org-include-pdf-links page)
+                    (insert (concat "[[docview:" clip2org-include-pdf-folder
+                                    (caar clist) ".pdf"
+                                    "::" page "][View Page]]\n"))))))))))
 
   (switch-to-buffer "*clippings*"))
 
@@ -198,8 +210,42 @@ to the list"
   ;FIXME: not is-highlight may mean a note as well? not just a bookmark?
   (not (cdr (assoc 'is-highlight booklist))))
 
-(defun clip2org ()
-  (interactive)
+(defun clip2org--save-last-run-timestamp (&optional timestamp)
+  "Save the timestamp to last-run file."
+  (with-temp-file clip2org-persistence-file
+    (org-insert-time-stamp (or timestamp (current-time)) t t)))
+
+(defun clip2org--get-last-run-timestamp ()
+  "Return the timestamp of the last run.
+
+Returns nil if there is no data for last run."
+  (when (file-exists-p clip2org-persistence-file)
+    (with-temp-buffer
+      (save-match-data
+        (insert-file clip2org-persistence-file)
+        (when (org-at-timestamp-p t)
+          (match-string 1))))))
+
+(defun clip2org--skip-clip (clip &optional last-run-ts)
+  "Return t if the clip should be skipped from the org tree"
+
+  (or (and clip2org-skip-bookmarks
+           (clip2org--is-bookmark clip))
+
+      (and last-run-ts (time-less-p
+                        (apply 'encode-time
+                               (org-parse-time-string
+                                (org-read-date t nil (cdr (assoc 'date clip)))))
+                        last-run-ts))))
+
+(defun clip2org (&optional all)
+  "Parse clippings and convert to org headlines.
+
+Only converts the clippings which have been added after the last
+time this command was run.  If ALL is non-nil, converts all the
+clippings.  The last run timestamp is updated only if ALL is nil.
+"
+  (interactive "P")
   (save-excursion
     (with-temp-buffer
       (insert-file clip2org-clippings-file)
@@ -211,7 +257,10 @@ to the list"
                        booklist
                        clist))
           (setq booklist (clip2org-get-next-book-as-list)))
-        (clip2org-convert-to-org clist all)))))
+        (clip2org-convert-to-org clist all))))
+
+  (unless all
+    (clip2org--save-last-run-timestamp)))
 
 
 (provide 'clip2org)
