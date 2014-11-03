@@ -201,16 +201,18 @@ to the list"
 (defun clip2org ()
   (interactive)
   (save-excursion
-    (find-file clip2org-clippings-file)
-    (goto-char (point-min))
-    (let (clist (booklist (clip2org-get-next-book-as-list)))
-      (while booklist
-        (setq clist (clip2org-append-to-alist-key
+    (with-temp-buffer
+      (insert-file clip2org-clippings-file)
+      (goto-char (point-min))
+      (let (clist (booklist (clip2org-get-next-book-as-list)))
+        (while booklist
+          (setq clist (clip2org-append-to-alist-key
                        (cdr (assoc 'title booklist))
                        booklist
                        clist))
-	(setq booklist (clip2org-get-next-book-as-list)))
-      (clip2org-convert-to-org clist))))
+          (setq booklist (clip2org-get-next-book-as-list)))
+        (clip2org-convert-to-org clist all)))))
+
 
 (provide 'clip2org)
 ;;; clip2org.el ends here.
