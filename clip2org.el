@@ -156,7 +156,8 @@ clip2org-include-pdf-folder."
                 (insert "\n   " content "\n"))
 
               (when clip2org-include-date
-                (org-set-property "DATE" date))
+                (org-set-property "DATE"
+                                  (concat "[" (org-read-date t nil date) "]")))
 
               (when clip2org-clipping-tags
                 (org-set-tags-to clip2org-clipping-tags))
