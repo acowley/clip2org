@@ -138,15 +138,20 @@ clip2org-include-pdf-folder."
     (org-mode)
 
     (let ((last-run (and (not all)
-                          (clip2org--get-last-run-timestamp))))
+                         (clip2org--get-last-run-timestamp))))
 
       (when last-run
         (setq last-run (apply 'encode-time (org-parse-time-string last-run))))
 
       ;; Process each book
       (dolist (book clist)
-        (insert "\n* " (car book))
-        (let ((note-list (cdr book)))
+        (let ((note-list
+               (remove-if
+                '(lambda (x) (clip2org--skip-clip x last-run))
+                (cdr book))))
+
+          (when note-list
+            (insert "\n* " (car book)))
 
           ;; Process each clipping
           (dolist (item note-list)
@@ -156,29 +161,27 @@ clip2org-include-pdf-folder."
                   (date (cdr (assoc 'date item)))
                   (content (cdr (assoc 'content item))))
 
-              (unless (clip2org--skip-clip item last-run)
+              (if (not is-highlight)
+                  (insert "\n** " content "\n")
+                (insert "\n** ")
+                (when page
+                  (insert "Page " page " "))
+                (when loc
+                  (insert "Location " loc " "))
+                (insert "\n   " content "\n"))
 
-                (if (not is-highlight)
-                    (insert "\n** " content "\n")
-                  (insert "\n** ")
-                  (when page
-                    (insert "Page " page " "))
-                  (when loc
-                    (insert "Location " loc " "))
-                  (insert "\n   " content "\n"))
+              (when clip2org-include-date
+                (org-set-property "DATE"
+                                  (concat "[" (org-read-date t nil date) "]")))
 
-                (when clip2org-include-date
-                  (org-set-property "DATE"
-                                    (concat "[" (org-read-date t nil date) "]")))
+              (when clip2org-clipping-tags
+                (org-set-tags-to clip2org-clipping-tags))
 
-                (when clip2org-clipping-tags
-                  (org-set-tags-to clip2org-clipping-tags))
-
-                ;; Insert pdf link
-                (if (and clip2org-include-pdf-links page)
-                    (insert (concat "[[docview:" clip2org-include-pdf-folder
-                                    (caar clist) ".pdf"
-                                    "::" page "][View Page]]\n"))))))))))
+              ;; Insert pdf link
+              (if (and clip2org-include-pdf-links page)
+                  (insert (concat "[[docview:" clip2org-include-pdf-folder
+                                  (caar clist) ".pdf"
+                                  "::" page "][View Page]]\n")))))))))
 
   (switch-to-buffer "*clippings*"))
 
