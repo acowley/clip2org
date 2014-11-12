@@ -168,7 +168,8 @@ clip2org-include-pdf-folder."
                   (insert "Page " page " "))
                 (when loc
                   (insert "Location " loc " "))
-                (insert "\n   " content "\n"))
+                (insert "\n   " content "\n")
+                (fill-paragraph))
 
               (when clip2org-include-date
                 (org-set-property "DATE"
