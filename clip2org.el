@@ -172,7 +172,9 @@ clip2org-include-pdf-folder."
 
               (when clip2org-include-date
                 (org-set-property "DATE"
-                                  (concat "[" (org-read-date t nil date) "]")))
+                                  (format-time-string
+                                   (concat "[" (substring (cdr org-time-stamp-formats) 1 -1) "]")
+                                   (org-read-date t t date))))
 
               (when clip2org-clipping-tags
                 (org-set-tags-to clip2org-clipping-tags))
@@ -236,9 +238,7 @@ Returns nil if there is no data for last run."
            (clip2org--is-bookmark clip))
 
       (and last-run-ts (time-less-p
-                        (apply 'encode-time
-                               (org-parse-time-string
-                                (org-read-date t nil (cdr (assoc 'date clip)))))
+                        (org-read-date t t (cdr  (assoc 'date clip)))
                         last-run-ts))))
 
 (defun clip2org (&optional all)
