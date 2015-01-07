@@ -242,17 +242,20 @@ Returns nil if there is no data for last run."
                         (org-read-date t t (cdr  (assoc 'date clip)))
                         last-run-ts))))
 
-(defun clip2org (&optional all)
+(defun clip2org (&optional all clipping-file)
   "Parse clippings and convert to org headlines.
 
 Only converts the clippings which have been added after the last
 time this command was run.  If ALL is non-nil, converts all the
 clippings.  The last run timestamp is updated only if ALL is nil.
+
+CLIPPING-FILE is a path to the clipping file. If none is
+provided, the `clip2org-clippings-file' value is used.
 "
   (interactive "P")
   (save-excursion
     (with-temp-buffer
-      (insert-file clip2org-clippings-file)
+      (insert-file (or clipping-file clip2org-clippings-file))
       (goto-char (point-min))
       (let (clist (booklist (clip2org-get-next-book-as-list)))
         (while booklist
