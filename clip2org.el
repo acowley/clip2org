@@ -2,8 +2,9 @@
 
 ;; Author: Thamer Mahmoud <thamer.mahmoud@gmail.com>
 ;; Version: 1.1
-;; Time-stamp: <2012-05-28 10:53:45 thamer>
-;; URL: https://github.com/thamer/clip2org
+;; Package-Requires: ((emacs "27.1") (org "9.4"))
+;; Time-stamp: <2021-06-11 22:35:33 acowley>
+;; URL: https://github.com/acowley/clip2org
 ;; Keywords: Kindle, Org mode, Amazon, My Clippings.txt
 ;; Compatibility: Tested on GNU Emacs 23.4 and 24.1
 ;; Copyright (C) 2012 Thamer Mahmoud, all rights reserved.
