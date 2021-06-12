@@ -51,6 +51,7 @@
 ;;
 ;;; Code
 (require 'cl-lib)
+(require 'org)
 
 (defgroup clip2org nil "clip2org group"
   :group 'org)
@@ -186,7 +187,7 @@ clip2org-include-pdf-folder."
               (org-set-property "BOOK" (car book))
 
               (when clip2org-clipping-tags
-                (org-set-tags-to clip2org-clipping-tags))
+                (org-set-tags clip2org-clipping-tags))
 
               ;; Insert pdf link
               (if (and clip2org-include-pdf-links page)
@@ -236,7 +237,7 @@ Returns nil if there is no data for last run."
   (when (file-exists-p clip2org-persistence-file)
     (with-temp-buffer
       (save-match-data
-        (insert-file clip2org-persistence-file)
+        (insert-file-contents clip2org-persistence-file)
         (when (org-at-timestamp-p t)
           (match-string 1))))))
 
@@ -263,7 +264,7 @@ provided, the `clip2org-clippings-file' value is used.
   (interactive "P")
   (save-excursion
     (with-temp-buffer
-      (insert-file (or clipping-file clip2org-clippings-file))
+      (insert-file-contents (or clipping-file clip2org-clippings-file))
       (goto-char (point-min))
       (let (clist (booklist (clip2org-get-next-book-as-list)))
         (while booklist
